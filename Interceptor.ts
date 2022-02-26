@@ -1,4 +1,4 @@
-import Config from "./Config";
+import Config from "./Config.js";
 import net from 'node:net';
 import fs from 'node:fs';
 import pc from 'picocolors';

@@ -1,5 +1,5 @@
-import Config from './Config'
-import Interceptor from './Interceptor';
+import Config from './Config.js'
+import Interceptor from './Interceptor.js';
 
 process.on('uncaughtException', (err: Error) => {
     console.error('global uncaughtException:', err);
