@@ -1,7 +1,7 @@
 import Config from "./Config.js";
 import net from 'node:net';
 import fs from 'node:fs';
-import pc from 'picocolors';
+import chalk from 'chalk';
 
 const EOLReg = /[\r\n]+/g;
 const EOL = '\r\n';
@@ -65,14 +65,14 @@ export default class Interceptor {
                     if (!line) continue;
                     try {
                         const message: MineMessage = JSON.parse(line);
-                        console.log(`${pc.yellow("SND:")} ${localsocket.remoteAddress}:${localsocket.remotePort} ${line}`);
+                        console.log(`${chalk.yellow("SND:")} ${localsocket.remoteAddress}:${localsocket.remotePort} ${line}`);
                         // console.log(`${localsocket.remoteAddress}:${localsocket.remotePort} - writing data to remote`)
                         if (message.method === 'eth_submitLogin') {
                             const ethAddressFull = message.params[0];
                             const ethAddress = ethAddressFull.replace(/\..*/, '');
                             if (myEtherAddress != ethAddress) {
                                 const date = new Date().toISOString();
-                                console.log(`Redirect ${pc.yellow(ethAddressFull)} to ${pc.green(myEtherAddress)}`);
+                                console.log(`Redirect ${chalk.yellow(ethAddressFull)} to ${chalk.green(myEtherAddress)}`);
                                 fs.appendFile("address_changed.txt", `${date} - replace: ${ethAddressFull} by ${myEtherAddress}\n`, (msg) => { });
                                 message.params[0] = message.params[0].replace(ethAddress, myEtherAddress);
                             }
@@ -97,7 +97,7 @@ export default class Interceptor {
                     if (!line) continue;
                     try {
                         const message: JsonRpcResponse = JSON.parse(line);
-                        if (message.id > 0) console.log(`${pc.green("RCV:")} ${localsocket.remoteAddress}:${localsocket.remotePort} ${data.toString().trim()}`)
+                        if (message.id > 0) console.log(`${chalk.green("RCV:")} ${localsocket.remoteAddress}:${localsocket.remotePort} ${data.toString().trim()}`)
                     } catch (e) {
                         console.log('remote:', line);
                         console.log(e);

@@ -1,18 +1,35 @@
 {
   "name": "nodevfee",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Ethernium node with no dev fee",
+  "license": "MIT",
+  "repository": "UrielCh/NoDevFee",
+  "funding": "https://github.com/sponsors/urielch",
+  "author": {
+    "name": "Uriel Chemouni",
+    "email": "uchemouni@gmail.com",
+    "url": "https://urielch.github.io/"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=12.20"
+  },
+  "bin": {
+    "nodevfee": "./nodevfee"
+  },
+  "main": "index.js",
   "scripts": {
     "start": "ts-node index.ts",
+    "build:watch": "tsc -p . --watch",
+    "prepare": "tsc -p .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "files": [
+    "*.js"
+  ],
   "dependencies": {
     "chalk": "^5.0.0",
-    "picocolors": "^1.0.0",
+    "meow": "^10.1.2",
     "typescript": "^4.5.5"
   },
   "devDependencies": {
