@@ -45,28 +45,76 @@ export interface JsonRpcResponse {
     result: string[] | boolean
 }
 
-export default class Interceptor {
-    constructor(public config: Config) { }
+export function startInterceptor(config: Config): net.Server {
+    const server = net.createServer((localsocket: net.Socket) => {
+        new Interceptor(config, server, localsocket).start();
+    });
+    server.listen(config.localPort)
+    console.log(`redirecting connections from 0.0.0.0:${config.localPort} to ${config.remotehost}:${config.remoteport}`)
+    return server;
+}
+
+class Interceptor {
+    private remotesocket!: net.Socket
+    constructor(private config: Config, private server: net.Server, private localsocket: net.Socket) {
+    }
+
+    private connectRemote(): net.Socket {
+        const { remoteport, remotehost } = this.config;
+        const remotesocket = new net.Socket()
+        remotesocket.connect(remoteport, remotehost)
+
+        // local disconnection triger remote disconection
+        remotesocket.on('close', () => {
+            console.log(`${this.remoteName} - closing local`)
+            this.localsocket.end()
+        })
+        this.remotesocket = remotesocket;
+        return remotesocket;
+    }
+
+    private _localName = '';
+    get localName(): string {
+        if (!this._localName) {
+            this._localName = `${this.localsocket.remoteAddress}:${this.localsocket.remotePort}`.replace('::ffff:', '');
+        }        
+        return this._localName;
+    }
+
+    private _remoteName = '';
+    get remoteName(): string {
+        if (!this._remoteName) {
+            const { remoteport, remotehost } = this.config;
+            // console.log(this.remotesocket);
+            this._remoteName = `${remotehost}:${remoteport}`.replace('::ffff:', '');
+        }        
+        return this._remoteName;
+    }
+
+
 
     public start() {
-        const { remoteport, remotehost, myEtherAddress } = this.config;
-        const server = net.createServer((localsocket: net.Socket) => {
-            const remotesocket = new net.Socket()
-            remotesocket.connect(remoteport, remotehost)
+        const { myEtherAddress } = this.config;
+        const remotesocket = this.connectRemote()
 
-            localsocket.on('connect', () => {
-                console.log(`>>> connection #${server.connections} from ${localsocket.remoteAddress}:${localsocket.remotePort}`)
-            })
+        this.localsocket.on('connect', () => {
+            console.log(`>>> connection #${chalk.greenBright(this.server.connections)} from ${this.localName}`)
+        })
 
-            localsocket.on('data', (data: Buffer) => {
-                const lines = data.toString().split(EOLReg)
-                const out: string[] = [];
-                for (const line of lines) {
-                    if (!line) continue;
+        /**
+         * incomming local request
+         * Layzie implementation if a request is split in multiple packets it will be failed
+         */
+        this.localsocket.on('data', (data: Buffer) => {
+            // Ether protocol allow multi-line bulk messages, each line end with \r\n
+            const lines = data
+                .toString()
+                .split(EOLReg)
+                .filter(a => a)
+                .map((line) => {
                     try {
                         const message: MineMessage = JSON.parse(line);
-                        console.log(`${chalk.yellow("SND:")} ${localsocket.remoteAddress}:${localsocket.remotePort} ${line}`);
-                        // console.log(`${localsocket.remoteAddress}:${localsocket.remotePort} - writing data to remote`)
+                        console.log(`${chalk.yellow("SND:")} ${this.localName} -> ${this.remoteName} ${line}`);
                         if (message.method === 'eth_submitLogin') {
                             const ethAddressFull = message.params[0];
                             const ethAddress = ethAddressFull.replace(/\..*/, '');
@@ -77,56 +125,51 @@ export default class Interceptor {
                                 message.params[0] = message.params[0].replace(ethAddress, myEtherAddress);
                             }
                         }
-                        out.push(`${JSON.stringify(message)}${EOL}`);
+                        return `${JSON.stringify(message)}${EOL}`;
                     } catch (e) {
                         console.log('local:', line);
                         console.log(e);
+                        return '';
                     }
-                }
-                const flushed = remotesocket.write(out.join(''));
-                if (!flushed) {
-                    console.log(' remote not flused; pausing local')
-                    localsocket.pause()
-                }
-
-            })
-
-            remotesocket.on('data', (data: Buffer) => {
-                const lines = data.toString().split(EOLReg);
-                for (const line of lines) {
-                    if (!line) continue;
-                    try {
-                        const message: JsonRpcResponse = JSON.parse(line);
-                        if (message.id > 0) console.log(`${chalk.green("RCV:")} ${localsocket.remoteAddress}:${localsocket.remotePort} ${data.toString().trim()}`)
-                    } catch (e) {
-                        console.log('remote:', line);
-                        console.log(e);
-                    }
-                }
-                const flushed = localsocket.write(data)
-                if (!flushed) {
-                    console.log(' local not flushed; pausing remote')
-                    remotesocket.pause()
-                }
-
-            })
-
-            localsocket.on('drain', () => {
-                console.log(`${localsocket.remoteAddress}:${localsocket.remotePort} - resuming remote`)
-                remotesocket.resume()
-            })
-
-            localsocket.on('close', () => {
-                console.log(`${localsocket.remoteAddress}:${localsocket.remotePort} - closing local`)
-                remotesocket.end()
-            })
-
-            remotesocket.on('close', () => {
-                console.log(`${localsocket.remoteAddress}:${localsocket.remotePort} - closing local`)
-                localsocket.end()
-            })
+                })
+            const flushed = remotesocket.write(lines.join(''));
+            if (!flushed) {
+                console.log(' remote not flused; pausing local')
+                this.localsocket.pause()
+            }
         })
-        server.listen(this.config.localPort)
-        console.log(`redirecting connections from 0.0.0.0:${this.config.localPort} to ${remotehost}:${remoteport}`)
+
+        /**
+         * RCV response from remote pool
+         */
+        remotesocket.on('data', (data: Buffer) => {
+            const lines = data.toString().split(EOLReg);
+            for (const line of lines) {
+                if (!line) continue;
+                try {
+                    const message: JsonRpcResponse = JSON.parse(line);
+                    if (message.id > 0) console.log(`${chalk.green("RCV:")} ${this.remoteName} -> ${this.localName} ${data.toString().trim()}`)
+                } catch (e) {
+                    console.log('remote:', line);
+                    console.log(e);
+                }
+            }
+            // forward data to local socket
+            const flushed = this.localsocket.write(data)
+            if (!flushed) {
+                console.log(' local not flushed; pausing remote')
+                remotesocket.pause()
+            }
+        })
+
+        this.localsocket.on('drain', () => {
+            console.log(`${this.localName} - resuming remote`)
+            remotesocket.resume()
+        })
+
+        this.localsocket.on('close', () => {
+            console.log(`${this.localName} - closing local`)
+            remotesocket.end()
+        })
     }
 }

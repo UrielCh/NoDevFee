@@ -1,5 +1,5 @@
 import Config from './Config.js'
-import Interceptor from './Interceptor.js';
+import { startInterceptor } from './Interceptor.js';
 import meow, { AnyFlags, Flag, Result } from 'meow';
 
 process.on('uncaughtException', (err: Error) => {
@@ -64,11 +64,10 @@ if (cli.input) {
     myEtherAddress = cli.input[0];
 }
 
-cli.input
 const config = new Config({
     destination: cli.flags.destination as string,
     localPort: cli.flags.localport as number,
     myEtherAddress,
 });
 
-new Interceptor(config).start();
+startInterceptor(config);
