@@ -99,8 +99,6 @@
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
   "include": [
-    "./Config.ts",
-    "./index.ts",
-    "./Interceptor.ts"
+    "src/*.ts",
   ]
 }
