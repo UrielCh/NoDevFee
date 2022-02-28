@@ -1,6 +1,6 @@
 import Config from './Config.js'
-import { startInterceptor } from './Interceptor.js';
-import meow, { AnyFlags, Flag, Result } from 'meow';
+import meow, { AnyFlags, Flag } from 'meow';
+import InterceptorServer from './InterceptorServer.js';
 
 process.on('uncaughtException', (err: Error) => {
     console.error('global uncaughtException:', err);
@@ -70,4 +70,4 @@ const config = new Config({
     myEtherAddress,
 });
 
-startInterceptor(config);
+void new InterceptorServer(config).start();

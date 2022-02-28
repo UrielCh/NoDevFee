@@ -2,71 +2,21 @@ import Config from "./Config.js";
 import net from 'node:net';
 import fs from 'node:fs';
 import chalk from 'chalk';
+import type { JsonRpcResponse, MineMessage } from "./models.js";
 
 const EOLReg = /[\r\n]+/g;
 const EOL = '\r\n';
 
-export interface JsonRpcRequest {
-    id: number;
-    method: string;
-    params: string[];
-    jsonrpc: '2.0';
-}
-
-export interface eth_submitLogin extends JsonRpcRequest {
-    method: 'eth_submitLogin';
-    worker: 'eth1.0' | string;
-    //params: string[];//  [ '0x31343757D6Fc7C41567543BEb9da982E09b6a09F.win', 'x' ],
-}
-
-export interface eth_getWork extends JsonRpcRequest {
-    method: 'eth_getWork';
-    //params: string[0];//  [ '0x31343757D6Fc7C41567543BEb9da982E09b6a09F.win', 'x' ],
-}
-
-export interface eth_submitWork extends JsonRpcRequest {
-    method: 'eth_submitWork';
-    //params: string[3];// [ '0x4fef440009b5469f', '0xb2ee97642576f9d68dd592c34df5cd9503640d0194d4b5b9d50ee3a940c1deac', '0x1368acd0ee14564ef67b82fdcf4d239a5afa8edfcb3fcd7826dda45557f2aba9'],
-}
-
-export interface eth_submitHashrate extends JsonRpcRequest {
-    method: 'eth_submitHashrate';
-    // params: string[2];// [ '0x1a944ee', '0x519d9ecdedd788bbe7e93964736f73e1376309c0194484ae54235259ffd07d57' ],
-}
-
-export interface MineMessage extends JsonRpcRequest {
-    method: 'eth_submitLogin' | 'eth_getWork' | 'eth_submitWork' | 'eth_submitHashrate' | string;
-    worker?: 'eth1.0' | string;// 'eth1.0',
-}
-
-export interface JsonRpcResponse {
-    id: number;
-    jsonrpc: "2.0";
-    result: string[] | boolean
-}
-
-export function startInterceptor(config: Config): net.Server {
-    const server = net.createServer((localsocket: net.Socket) => {
-        new Interceptor(config, localsocket);
-    });
-    server.listen(config.localPort)
-    console.log(`redirecting connections from 0.0.0.0:${config.localPort} to ${config.remotehost}:${config.remoteport}`)
-    return server;
-}
-
-class Interceptor {
+export default class Interceptor {
     private minerMessage = 0;
     private poolMessage = 0;
 
     private remotesocket: net.Socket
+    private ready!: Promise<void>;
 
-    constructor(private config: Config, private localsocket: net.Socket) {
+    constructor(private config: Config, public localsocket: net.Socket, public id: number) {
         const { myEtherAddress } = this.config;
         this.remotesocket = this.connectRemote()
-
-        // this.localsocket.on('connect', () => {
-        //     console.log(`>>> connection #${chalk.greenBright(this.server.connections)} from ${this.localName}`)
-        // })
 
         /**
          * incomming local request
@@ -145,10 +95,16 @@ class Interceptor {
     private connectRemote(): net.Socket {
         const { remoteport, remotehost } = this.config;
         const remotesocket = new net.Socket()
-        remotesocket.connect(remoteport, remotehost)
+        
+        this.ready = new Promise<void>((resolve) => {
+            remotesocket.connect(remoteport, remotehost, () => {
+                console.log(`>>> connection #${chalk.greenBright(this.id)} from ${this.remoteName}`)
+                resolve();
+            })
+        })
 
         // local disconnection triger remote disconection
-        remotesocket.on('close', () => {
+        remotesocket.once('close', () => {
             console.log(`${this.remoteName} - closing local`)
             this.localsocket.end()
         })
@@ -168,10 +124,13 @@ class Interceptor {
     get remoteName(): string {
         if (!this._remoteName) {
             const { remoteport, remotehost } = this.config;
-            // console.log(this.remotesocket);
             this._remoteName = `${remotehost}:${remoteport}`.replace('::ffff:', '');
         }
         return this._remoteName;
+    }
+
+    get isReady(): Promise<void> {
+        return this.ready;
     }
 
 }

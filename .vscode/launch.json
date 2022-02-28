@@ -1,0 +1,34 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug AVA file",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/ava",
+            "runtimeArgs": [
+                "${file}"
+              ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outputCapture": "std",
+        },
+        {
+            "name": "Launch TypeScript",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "args": ["${workspaceFolder}/src/index.js", "--destination", "172.65.207.106:4444", "0x31343757D6Fc7C41567543BEb9da982E09b6a09F"],
+            "cwd": "${workspaceFolder}",
+            "internalConsoleOptions": "openOnSessionStart",
+            "skipFiles": ["<node_internals>/**", "node_modules/**"],
+            "env": {
+              "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+            }
+          }
+    ]
+}

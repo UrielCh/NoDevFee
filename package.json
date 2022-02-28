@@ -20,9 +20,11 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node index.ts",
+    "clean": "rimraf src/*.js",
     "build:watch": "tsc -p . --watch",
-    "prepare": "tsc -p .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p .",
+    "test": "npm run build && ava",
+    "prepack": "npm run build"
   },
   "files": [
     "*.js"
@@ -30,11 +32,13 @@
   "dependencies": {
     "chalk": "^5.0.0",
     "meow": "^10.1.2",
+    "promise-socket": "^7.0.0",
     "typescript": "^4.5.5"
   },
   "devDependencies": {
     "@types/node": "^17.0.21",
     "ava": "^4.0.1",
+    "rimraf": "^3.0.2",
     "ts-node": "^10.5.0",
     "xo": "^0.48.0"
   },
@@ -42,11 +46,12 @@
     "extensions": {
       "ts": "module"
     },
-    "nonSemVerExperiments": {
-      "configurableModuleFormat": true
-    },
+    "files": [
+      "test/*.test.ts"
+    ],
     "nodeArguments": [
-      "--loader=ts-node/esm"
+      "--loader=ts-node/esm",
+      "--experimental-specifier-resolution=node"
     ]
   }
 }
