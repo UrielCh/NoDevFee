@@ -18,7 +18,7 @@
             "outputCapture": "std",
         },
         {
-            "name": "Launch TypeScript",
+            "name": "Launch index",
             "type": "node",
             "request": "launch",
             "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],

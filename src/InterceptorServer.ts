@@ -13,7 +13,7 @@ export default class InterceptorServer {
             const id = this.sessionId++;
             const cnx = new Interceptor(config, localsocket, id);
             this.connextions[id] = cnx;
-            cnx.localsocket.once('close', () => {
+            cnx.minerSocket.once('close', () => {
                 delete this.connextions[id];
             })
         });

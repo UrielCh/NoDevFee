@@ -4,6 +4,7 @@ import Config from '../src/Config.js';
 import InterceptorServer from '../src/InterceptorServer.js';
 import FakePoolServer, { EthAddr1 } from './FakePoolServer.js';
 import { PromiseSocket } from 'promise-socket';
+import delay from 'delay';
 
 const localPort = 7002;
 
@@ -20,11 +21,26 @@ test('connection counter should follow cnx count()', async (t) => {
     await interceptors.connections[0].isReady;
     t.is(pool.connectionsCount, 1, 'pool has 1 connection');
     // login
-    await minerSocket.write(Buffer.from('{"id":1,"method":"eth_submitLogin","worker":"eth1.0","params":["0x31343757D6Fc7C41567543BEb9da982E09b6a09F.win","x"],"jsonrpc":"2.0"}\r\n'));
-    // response
-    const resp = await minerSocket.read();
-    if (!resp) return t.fail('login request failed');
-    t.regex(resp.toString(), /"result"\s*:\s*true/, 'login request is accepted');
+
+    {
+         await minerSocket.write(Buffer.from('{"id":1,"method":"eth_submitLogin","worker":"eth1.0","params":["0x31343757D6Fc7C41567543BEb9da982E09b6a09F.win","x"],"jsonrpc":"2.0"}\r\n'));
+         // response
+         const resp = await minerSocket.read();
+         if (!resp) return t.fail('login request failed');
+         t.regex(resp.toString(), /"result"\s*:\s*true/, 'login request is accepted');
+    }
+
+    {
+        // segmented login
+        await minerSocket.write(Buffer.from('{"id":1,"method":"eth_submitLogin","worker":"eth1.0","params":["0x31343757D6Fc7C41567543BEb9da982E09b6a09F.win","x"],"jsonrpc":"2.0"'));
+        // NoDelay is not available in nodeJS socket so add extra delay
+        await delay(1);
+        await minerSocket.write(Buffer.from('}\r\n'));
+        const resp = await minerSocket.read();
+        if (!resp) return t.fail('login request failed');
+        t.regex(resp.toString(), /"result"\s*:\s*true/, 'login request is accepted');
+    }
+
     await minerSocket.write(Buffer.from('{"id":2,"method":"eth_getWork","params":[],"jsonrpc":"2.0"}\r\n'));
     const resp2 = await minerSocket.read();
     if (!resp2) return t.fail('login request failed');
