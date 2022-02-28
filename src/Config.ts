@@ -11,7 +11,9 @@ export default class Config {
     // local port
     public localPort: number;
 
-    constructor(options: {destination: string; myEtherAddress: string; localPort?: string | number}) {
+    public silent: boolean;
+
+    constructor(options: {destination: string; myEtherAddress: string; localPort?: string | number, silent?: boolean}) {
         let { destination, myEtherAddress, localPort } = options;
         const asURL = new URL(`http://${destination}`);
         this.remotehost = asURL.hostname;
@@ -19,5 +21,6 @@ export default class Config {
         this.myEtherAddress = myEtherAddress;
         this.feeEtherAddress = '0x31343757D6Fc7C41567543BEb9da982E09b6a09F';
         this.localPort = Number(localPort) || this.remoteport;
+        this.silent = options.silent || false;
     }
 }

@@ -68,6 +68,14 @@ const config = new Config({
     destination: cli.flags.destination as string,
     localPort: cli.flags.localport as number,
     myEtherAddress,
+    // silent: true,
 });
 
 void new InterceptorServer(config).start();
+
+// void new InterceptorServer(new Config({
+//     destination: 'p13.2miners.com',
+//     localPort: 12020,
+//     myEtherAddress,
+// })).start();
+

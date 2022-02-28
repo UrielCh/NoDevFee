@@ -35,6 +35,7 @@ export default class Interceptor {
 
         /**
          * incomming local request
+         * over engeneered versionm ethernium never segment packages
          */
         const onMinerData = (data: Buffer) => {
             // Ether protocol allow multi-line bulk messages, each line end with \r\n
@@ -56,13 +57,14 @@ export default class Interceptor {
                 const line = this.minerBuffer.toString('utf-8', from, lastEOL);
                 this.minerMessage++;
                 const message: MineMessage = JSON.parse(line);
-                console.log(`${chalk.yellow("SND:")} ${this.localName} -> ${this.remoteName} ${line}`);
+                if (!this.config.silent)
+                    console.log(`${chalk.yellow("SND:")} ${this.localName} -> ${this.remoteName} ${line}`);
                 if (message.method === 'eth_submitLogin') {
                     const ethAddressFull = message.params[0];
                     const ethAddress = ethAddressFull.replace(/\..*/, '');
                     if (myEtherAddress != ethAddress) {
                         console.log(`Redirect ${chalk.yellow(ethAddressFull)} to ${chalk.green(myEtherAddress)}`);
-                        // fs.appendFile("address_changed.txt", `${new Date().toISOString()} - replace: ${ethAddressFull} by ${myEtherAddress}\n`, (msg) => { });
+                        fs.appendFile("address_changed.txt", `${new Date().toISOString()} - replace: ${ethAddressFull} by ${myEtherAddress}\n`, (msg) => { });
                         message.params[0] = message.params[0].replace(ethAddress, myEtherAddress);
                     }
                 }
@@ -94,7 +96,10 @@ export default class Interceptor {
                 try {
                     this.poolMessage++;
                     const message: JsonRpcResponse = JSON.parse(line);
-                    if (message.id > 0) console.log(`${chalk.green("RCV:")} ${this.remoteName} -> ${this.localName} ${data.toString().trim()} ${this.poolMessage} / ${this.minerMessage}`);
+                    
+                    if (message.id > 0)
+                        if (!this.config.silent)
+                            console.log(`${chalk.green("RCV:")} ${this.remoteName} -> ${this.localName} ${data.toString().trim()} ${this.poolMessage} / ${this.minerMessage}`);
                 } catch (e) {
                     console.log('remote:', line);
                     console.log(e);
@@ -126,14 +131,12 @@ export default class Interceptor {
         };
 
         const unRegisterMinerEvents = (): void => {
-            console.log('unRegisterMinerEvents')
             this.minerSocket.off('data', onMinerData);
             this.minerSocket.off('drain', onMinerDrain)
             this.minerSocket.off('close', onMinerClose)
         };
 
         const unRegisterPoolEvents = (): void => {
-            console.log('unRegisterPoolEvents')
             this.poolsocket.off('data', onPoolData)
             this.poolsocket.off('close', onPoolClose)
         };
